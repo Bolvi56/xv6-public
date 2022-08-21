@@ -89,3 +89,14 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+//return the quantity of proces that are running
+//Unix version 6 was released
+
+int 
+sys_getprocs(void) 
+{
+  int contador_ssoo = 0;
+  contador_ssoo = allocproc() + contador_ssoo;
+  return contador_ssoo;
+}  //Creación de la llamada al sistema getprocs.
