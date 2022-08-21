@@ -541,7 +541,7 @@ int count_proc(void){
   acquire(&ptable.lock);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == RUNNING) 
+    if(p->state != UNUSED) 
       procesos_ssoo++;
 
   release(&ptable.lock);
