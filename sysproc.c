@@ -96,7 +96,5 @@ sys_uptime(void)
 int 
 sys_getprocs(void) 
 {
-  int contador_ssoo = 0;
-  contador_ssoo = allocproc() + contador_ssoo;
-  return contador_ssoo;
+  return count_proc();
 }  //Creación de la llamada al sistema getprocs.
