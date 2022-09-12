@@ -7,6 +7,9 @@
 #include "proc.h"
 #include "spinlock.h"
 
+#define MAX_TICKETS 100
+#define DEFAULT_TICKETS 5
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -178,7 +181,7 @@ growproc(int n)
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
 int
-fork(void)
+fork(int nTickets)
 {
   int i, pid;
   struct proc *np;
@@ -207,6 +210,13 @@ fork(void)
     if(curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
   np->cwd = idup(curproc->cwd);
+  
+  if(nTickets > MAX_TICKETS)
+    np->tickets = MAX_TICKETS;
+  else if(nTickets < 1)
+    np->tickets = DEFAULT_TICKETS;
+  else
+    np->tickets = nTickets;
 
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
@@ -319,22 +329,40 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
 void
 scheduler(void)
 {
+  int totalTickets, sorteado = 1;
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+    totalTickets = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
+      totalTickets = totalTickets + p->tickets;
+    }
+    if(totalTickets == 0) totalTickets++;
+
+    sorteado = ((sorteado * 123123 + 321321)%totalTickets);
+    totalTickets = sorteado;
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE)
+        continue;
+      else{
+        totalTickets = totalTickets - p->tickets;
+        if(totalTickets > 0)
+          continue;
+      }
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -342,18 +370,17 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
       swtch(&(c->scheduler), p->context);
       switchkvm();
-
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
+
+
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
